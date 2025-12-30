@@ -17,11 +17,9 @@ if [ -f "$full_proyecto/tmux.sh" ]; then
     bash "$full_proyecto/tmux.sh" "$proyecto" "$full_proyecto"
 else
     # Run default tmux commands
-    tmux neww -n $proyecto
-    tmux send-keys -t $proyecto "cd $full_proyecto" C-m
-    tmux send-keys -t $proyecto "ave 2>/dev/null" C-m
-
-    tmux send-keys -t $proyecto "clear" C-m
-
-    tmux send-keys -t $proyecto "nv" C-m
+    tmux new-session -d -s "$proyecto" -c "$full_proyecto"
+    tmux send-keys -t "$proyecto" "ave 2>/dev/null" C-m
+    tmux send-keys -t "$proyecto" "clear" C-m
+    tmux send-keys -t "$proyecto" "nv" C-m
+    tmux switch-client -t "$proyecto"
 fi
