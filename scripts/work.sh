@@ -1,6 +1,58 @@
 # base_dir="/Proyectos"
 base_dir=$HOME/Proyectos
-proyecto=`echo $(ls $base_dir)|tr ' ' '\n' | fzf`
+
+# Get project directories with metadata (fast version, sorted by last modified descending)
+projects=$(ls -1 "$base_dir" | while read -r project_name; do
+    dir="$base_dir/$project_name"
+    [ -d "$dir" ] || continue
+    
+    # Fast tech detection (fixed width labels for alignment)
+    if [ -f "$dir/package.json" ]; then tech="\033[38;5;34m󰎙 Node.js\033[0m"
+    elif [ -f "$dir/requirements.txt" ] || [ -f "$dir/pyproject.toml" ] || [ -d "$dir/.venv" ] || [ -d "$dir/venv" ] || [ -d "$dir/env" ] || [ -d "$dir/pyenv" ]; then tech="\033[33m󰌠 Python \033[0m"
+    elif [ -f "$dir/go.mod" ]; then tech="\033[32m󰟓 Go     \033[0m"
+    elif [ -f "$dir/Cargo.toml" ]; then tech="\033[38;5;208m󱘗 Rust   \033[0m"
+    elif [ -f "$dir/pom.xml" ] || [ -f "$dir/build.gradle" ]; then tech="\033[31m󰬷 Java   \033[0m"
+    elif [ -f "$dir/composer.json" ]; then tech="\033[35m󰌟 PHP    \033[0m"
+    elif [ -f "$dir/Gemfile" ]; then tech="\033[91m󰴭 Ruby   \033[0m"
+    elif [ -f "$dir/Dockerfile" ]; then tech="\033[34m󰡨 Docker \033[0m"
+    else tech="\033[90m󰉋 Other  \033[0m"; fi
+    
+    # Get last modified (single stat call, fast)
+    newest=$(ls -t "$dir" 2>/dev/null | head -1)
+    if [ -n "$newest" ]; then
+        stat_out=$(stat -c "%Y %y" "$dir/$newest" 2>/dev/null)
+        mod_epoch=${stat_out%% *}
+        mod_date=$(echo "$stat_out" | cut -d' ' -f2)
+    else
+        mod_epoch="0"
+        mod_date="empty"
+    fi
+    
+    # Output: epoch|name|tech|date (tab-separated for clean columns)
+    printf "%s\t%-24s\t%b\t%s\n" "$mod_epoch" "$project_name" "$tech" "$mod_date"
+done | sort -t$'\t' -k1 -rn | cut -f2-)
+
+# Use fzf to select a project with preview
+proyecto=$(echo "$projects" | fzf \
+    --prompt="󰍉 Select project: " \
+    --height=100% \
+    --reverse \
+    --border \
+    --bind='j:down,k:up,i:unbind(j,k)+unbind(q),esc:rebind(j,k)+rebind(q),q:abort' \
+    --header=$'[j/k:nav i:type esc:nav q:quit]\nProject                 \tTech     \tLast Updated' \
+    --preview='project_name=$(echo {} | awk "{print \$1}"); project_dir="'"$base_dir"'/$project_name"; 
+    if [ -f "$project_dir/README.md" ]; then 
+        echo "󰈙 README.md"; 
+        echo "─────────────────────────────────"; 
+        head -8 "$project_dir/README.md" | sed "s/^/  /"; 
+        echo ""; 
+    fi; 
+    echo "󰙅 Contents"; 
+    echo "─────────────────────────────────"; 
+    ls --color=always "$project_dir" 2>/dev/null | head -15 | sed "s/^/  /" || echo "  Cannot access"' \
+    --preview-window=right:50% \
+    --ansi \
+    --preview-label=" 󰋼 Details " | awk '{print $1}')
 
 # Check if user cancelled fzf or proyecto is empty
 if [ -z "$proyecto" ]; then
@@ -10,6 +62,12 @@ fi
 
 full_proyecto="$base_dir/$proyecto"
 
+# Check if tmux session already exists
+if tmux has-session -t "$proyecto" 2>/dev/null; then
+    echo "Session '$proyecto' already exists. Switching to it."
+    tmux switch-client -t "$proyecto"
+    exit 0
+fi
 
 if [ -f "$full_proyecto/tmux.sh" ]; then
     # Extract the session name from the tmux.sh script
