@@ -1,5 +1,4 @@
 #!/bin/bash
-# base_dir="/Proyectos"
 base_dir=$HOME/Proyectos
 
 # Detect OS for stat command compatibility
