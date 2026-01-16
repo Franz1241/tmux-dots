@@ -1,5 +1,13 @@
+#!/bin/bash
 # base_dir="/Proyectos"
 base_dir=$HOME/Proyectos
+
+# Detect OS for stat command compatibility
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    IS_MAC=true
+else
+    IS_MAC=false
+fi
 
 # Get project directories with metadata (fast version, sorted by last modified descending)
 projects=$(ls -1 "$base_dir" | while read -r project_name; do
@@ -17,12 +25,20 @@ projects=$(ls -1 "$base_dir" | while read -r project_name; do
     elif [ -f "$dir/Dockerfile" ]; then tech="\033[34m󰡨 Docker \033[0m"
     else tech="\033[90m󰉋 Other  \033[0m"; fi
     
-    # Get last modified (single stat call, fast)
+    # Get last modified (cross-platform: Linux/macOS)
     newest=$(ls -t "$dir" 2>/dev/null | head -1)
     if [ -n "$newest" ]; then
-        stat_out=$(stat -c "%Y %y" "$dir/$newest" 2>/dev/null)
-        mod_epoch=${stat_out%% *}
-        mod_date=$(echo "$stat_out" | cut -d' ' -f2)
+        file_path="$dir/$newest"
+        if [ "$IS_MAC" = true ]; then
+            # macOS (BSD stat)
+            mod_epoch=$(stat -f "%m" "$file_path" 2>/dev/null || echo "0")
+            mod_date=$(stat -f "%Sm" -t "%Y-%m-%d" "$file_path" 2>/dev/null || echo "unknown")
+        else
+            # Linux (GNU stat)
+            stat_out=$(stat -c "%Y %y" "$file_path" 2>/dev/null)
+            mod_epoch=${stat_out%% *}
+            mod_date=$(echo "$stat_out" | cut -d' ' -f2)
+        fi
     else
         mod_epoch="0"
         mod_date="empty"
@@ -49,7 +65,7 @@ proyecto=$(echo "$projects" | fzf \
     fi; 
     echo "󰙅 Contents"; 
     echo "─────────────────────────────────"; 
-    ls --color=always "$project_dir" 2>/dev/null | head -15 | sed "s/^/  /" || echo "  Cannot access"' \
+    if [[ "$OSTYPE" == "darwin"* ]]; then CLICOLOR_FORCE=1 ls -G "$project_dir" 2>/dev/null; else ls --color=always "$project_dir" 2>/dev/null; fi | head -15 | sed "s/^/  /" || echo "  Cannot access"' \
     --preview-window=right:50% \
     --ansi \
     --preview-label=" 󰋼 Details " | awk '{print $1}')
