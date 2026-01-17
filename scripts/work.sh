@@ -53,7 +53,7 @@ proyecto=$(echo "$projects" | fzf \
     --height=100% \
     --reverse \
     --border \
-    --bind='j:down,k:up,i:unbind(j,k)+unbind(q),esc:rebind(j,k)+rebind(q),q:abort' \
+    --bind='j:down,k:up,i:unbind(j,k,q,i),esc:rebind(j,k,q,i),q:abort' \
     --header=$'[j/k:nav i:type esc:nav q:quit]\nProject                 \tTech     \tLast Updated' \
     --preview='project_name=$(echo {} | awk "{print \$1}"); project_dir="'"$base_dir"'/$project_name"; 
     if [ -f "$project_dir/README.md" ]; then 

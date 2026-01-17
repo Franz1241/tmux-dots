@@ -42,7 +42,7 @@ selected=$(echo -e "$formatted_sessions" | fzf \
     --reverse \
     --border \
     --ansi \
-    --bind='j:down,k:up,i:unbind(j,k)+unbind(q),esc:rebind(j,k)+rebind(q),q:abort' \
+    --bind='j:down,k:up,i:unbind(j,k,q,i),esc:rebind(j,k,q,i),q:abort' \
     --header="Session Name         Status  Windows  Created  [j/k:nav i:type esc:nav q:quit]" \
     --preview='session_name=$(echo {} | sed "s/\x1b\[[0-9;]*m//g" | awk "{print \$1}");
     
