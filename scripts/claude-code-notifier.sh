@@ -79,6 +79,18 @@ fi
 
 project="$(basename "$CLAUDE_PROJECT_DIR")"
 
+# The Notification hook fires for both "tool needs approval" and Claude's
+# built-in idle reminder ("Claude is waiting for your input"), which lands
+# ~60s after a Stop if the user hasn't replied. We only want the former —
+# read the hook's JSON payload from stdin and bail on the idle reminder.
+if [[ "$kind" == "input" ]]; then
+  payload="$(cat)"
+  hook_msg="$(printf '%s' "$payload" | jq -r '.message // empty' 2>/dev/null)"
+  if [[ "$hook_msg" == *"waiting for your input"* ]]; then
+    exit 0
+  fi
+fi
+
 case "$kind" in
   input)  msg="Claude needs your attention on project $project" ;;
   done)   msg="Claude finished on project $project" ;;
