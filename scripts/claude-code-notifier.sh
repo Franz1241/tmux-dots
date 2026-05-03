@@ -86,13 +86,18 @@ case "$kind" in
   *)      msg="Claude notification for project $project" ;;
 esac
 
+# Detach backgrounded jobs from the hook's stdio. Claude Code reads the hook's
+# stdout via a pipe and only sees EOF when *all* writers close it, so any
+# child that inherits stdout (notify-send --action waiting for click,
+# terminal-notifier -execute, the TTS pipeline in `say`) keeps the hook
+# "running" from claude's perspective even after this script exits.
 if [[ "$OS" == "Darwin" ]]; then
   terminal-notifier \
     -title "Claude Code" \
     -message "$msg" \
-    -execute "$SCRIPT --focus '$CLAUDE_PROJECT_DIR'" &
+    -execute "$SCRIPT --focus '$CLAUDE_PROJECT_DIR'" </dev/null >/dev/null 2>&1 &
 
-  say "$msg"
+  say "$msg" </dev/null >/dev/null 2>&1 &
 else
   # Linux/GNOME (Wayland): use a named action — GNOME Shell hides actions
   # named "default" as a button. --action implies --wait, so background the
@@ -111,7 +116,7 @@ else
       token="$(cat "$tokfile" 2>/dev/null)"
       XDG_ACTIVATION_TOKEN="$token" "$SCRIPT" --focus "$CLAUDE_PROJECT_DIR"
     fi
-  ) &
+  ) </dev/null >/dev/null 2>&1 &
 
-  say "$msg"
+  say "$msg" </dev/null >/dev/null 2>&1 &
 fi
